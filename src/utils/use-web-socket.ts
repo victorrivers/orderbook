@@ -8,7 +8,16 @@ export enum ReadyState {
 	UNINSTANTIATED = -1,
 }
 
-export function useWebSocket<T>(socketUrl: string) {
+export enum ConnectionState {
+	UNINITIALIZED = 0,
+	CONNECTED = 1,
+	DISCONNECTED = 2,
+}
+
+export function useWebSocket<T>(
+	socketUrl: string,
+	connectionState: ConnectionState
+) {
 	const [readyState, setReadyState] = useState<ReadyState>(
 		ReadyState.UNINSTANTIATED
 	);
@@ -51,23 +60,50 @@ export function useWebSocket<T>(socketUrl: string) {
 		}
 	}
 
-	useEffect(() => {
-		webSocketRef.current = new WebSocket(socketUrl);
-		const socket = webSocketRef.current;
+	const detachEvenHandlers = useCallback((webSocket?: WebSocket) => {
+		if (webSocket) {
+			console.log(
+				"REMOVE EVENT LISTENERS",
+				ReadyState[readyState].toString(),
+				ConnectionState[connectionState].toString()
+			);
+			webSocket.removeEventListener("open", onWebSocketOpen);
+			webSocket.removeEventListener("message", onWebSocketMessage);
+			webSocket.removeEventListener("error", onWebSocketError);
+			webSocket.removeEventListener("close", onWebSocketClose);
+		}
+	}, []);
 
-		socket.addEventListener("open", onWebSocketOpen);
-		socket.addEventListener("message", onWebSocketMessage);
-		socket.addEventListener("error", onWebSocketError);
-		socket.addEventListener("close", onWebSocketClose);
+	useEffect(() => {
+		switch (connectionState) {
+			case ConnectionState.CONNECTED:
+				if (socketUrl) {
+					webSocketRef.current = new WebSocket(socketUrl);
+					const socket = webSocketRef.current;
+
+					socket.addEventListener("open", onWebSocketOpen);
+					socket.addEventListener("message", onWebSocketMessage);
+					socket.addEventListener("error", onWebSocketError);
+					socket.addEventListener("close", onWebSocketClose);
+				}
+				break;
+			case ConnectionState.DISCONNECTED:
+				if (webSocketRef.current) {
+					webSocketRef.current.close();
+					console.log("DISCONNECT");
+				}
+				detachEvenHandlers(webSocketRef.current);
+				break;
+
+			default:
+				break;
+		}
+		console.log("useEffect", socketUrl, connectionState);
 
 		return () => {
-			socket.removeEventListener("open", onWebSocketOpen);
-			socket.removeEventListener("message", onWebSocketMessage);
-			socket.removeEventListener("error", onWebSocketError);
-			socket.removeEventListener("close", onWebSocketClose);
-			socket.close();
+			detachEvenHandlers();
 		};
-	}, [socketUrl]);
+	}, [socketUrl, connectionState, detachEvenHandlers]);
 
 	return { sendMessage, lastMessage, readyState, closeConnection };
 }

@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ReadyState, useWebSocket } from "../../utils/use-web-socket";
+import {
+	ConnectionState,
+	ReadyState,
+	useWebSocket,
+} from "../../utils/use-web-socket";
 import styles from "./feed.module.css";
 
 interface Message {
@@ -20,6 +24,16 @@ type FeedData = {
 	asks: OrderLevel[];
 };
 
+enum PriceLevel {
+	PRICE = 0,
+	SIZE = 1,
+}
+
+enum SortDirection {
+	ASC = 0,
+	DESC = 1,
+}
+
 /*
  * TODO:
  * - Handle Ready states: Error, Close, etc.
@@ -30,11 +44,22 @@ export const Feed = () => {
 		bids: [],
 		asks: [],
 	});
+	console.log("RENDER");
 
 	const messageHistory = useRef<Message[]>([]);
 
-	const { sendMessage, lastMessage, readyState, closeConnection } =
-		useWebSocket<Message>("wss://www.cryptofacilities.com/ws/v1");
+	const [connectionState, setConnectionState] = useState(
+		ConnectionState.DISCONNECTED
+	);
+
+	const { sendMessage, lastMessage, readyState } = useWebSocket<Message>(
+		"wss://www.cryptofacilities.com/ws/v1",
+		connectionState
+	);
+
+	useEffect(() => {
+		setConnectionState(ConnectionState.CONNECTED);
+	}, []);
 
 	useEffect(() => {
 		if (readyState === ReadyState.OPEN) {
@@ -47,23 +72,41 @@ export const Feed = () => {
 	}, [readyState, sendMessage]);
 
 	useEffect(() => {
-		if (messageHistory.current.length > 9) {
-			closeConnection();
-		}
+		// TODO: Avoid asking for undefined
 		if (lastMessage) {
-			// TODO: Avoid asking for undefined
 			if (lastMessage.feed === "book_ui_1_snapshot") {
+				console.log("kaka");
+				setFeed({
+					bids: createOrderLevels(lastMessage.bids, SortDirection.ASC),
+					asks: createOrderLevels(lastMessage.asks, SortDirection.DESC),
+				});
+				messageHistory.current.push(lastMessage);
+			} else if (
+				lastMessage.event === undefined &&
+				lastMessage.feed === "book_ui_1" &&
+				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0)
+			) {
 				setFeed((x) => {
-					const feed = {
-						bids: createOrderLevels(lastMessage.bids),
-						asks: createOrderLevels(lastMessage.asks),
+					return {
+						bids: updateOrderLevels(
+							x.bids,
+							lastMessage.bids,
+							SortDirection.ASC
+						),
+						asks: updateOrderLevels(
+							x.asks,
+							lastMessage.asks,
+							SortDirection.DESC
+						),
 					};
-					return feed;
 				});
 			}
-			messageHistory.current.push(lastMessage);
 		}
-	}, [lastMessage, closeConnection]);
+	}, [lastMessage]);
+
+	useEffect(() => {
+		console.log("messageHistory", messageHistory.current);
+	}, [JSON.stringify(messageHistory.current)]);
 
 	const connectionStatus = {
 		[ReadyState.CONNECTING]: "Connecting",
@@ -78,6 +121,16 @@ export const Feed = () => {
 	return (
 		<div>
 			<div>{connectionStatus}</div>
+			<div>
+				<button onClick={() => setConnectionState(ConnectionState.CONNECTED)}>
+					CONNECT
+				</button>
+				<button
+					onClick={() => setConnectionState(ConnectionState.DISCONNECTED)}
+				>
+					DISCONNECT
+				</button>
+			</div>
 
 			<div className={styles.flex}>
 				<table>
@@ -89,8 +142,8 @@ export const Feed = () => {
 						</tr>
 					</thead>
 					<tbody>
-						{feed.asks.map((level, index) => (
-							<tr key={`ask-level-${index}`}>
+						{feed.bids.map((level, index) => (
+							<tr key={`bid-level-${index}`}>
 								<td>{level.total}</td>
 								<td>{level.size}</td>
 								<td>{level.price}</td>
@@ -108,7 +161,7 @@ export const Feed = () => {
 					</thead>
 					<tbody>
 						{feed.asks.map((level, index) => (
-							<tr key={`bid-level-${index}`}>
+							<tr key={`ask-level-${index}`}>
 								<td>{level.price}</td>
 								<td>{level.size}</td>
 								<td>{level.total}</td>
@@ -123,18 +176,92 @@ export const Feed = () => {
 	);
 };
 
-// TODO: Create index 0,1 typed.
-function createOrderLevels(priceLevels: [number, number][]): OrderLevel[] {
+function createOrderLevels(
+	priceLevels: [number, number][],
+	sortDirection: SortDirection
+): OrderLevel[] {
 	const orderLevels: OrderLevel[] = [];
 
-	priceLevels
-		.sort((a, b) => a[0] - b[0])
-		.forEach((level, index, array) =>
-			orderLevels.push({
-				price: level[0],
-				size: level[1],
-				total: 0,
-			})
-		);
+	const sortedPriceLevels = priceLevels.sort((a, b) =>
+		sortPriceLevels(a, b, sortDirection)
+	);
+
+	sortedPriceLevels.forEach((level, index, array) =>
+		orderLevels.push({
+			price: level[PriceLevel.PRICE],
+			size: level[PriceLevel.SIZE],
+			total:
+				index === 0
+					? level[PriceLevel.SIZE]
+					: array.slice(0, index + 1).reduce(reducer)[PriceLevel.SIZE],
+		})
+	);
 	return orderLevels;
+}
+
+function updateOrderLevels(
+	stateOrderLevels: OrderLevel[],
+	deltaPriceLevels: [number, number][],
+	sortDirection: SortDirection
+): OrderLevel[] {
+	const orderLevels: OrderLevel[] = [...stateOrderLevels];
+
+	deltaPriceLevels.forEach((delta) => {
+		const foundIndex = orderLevels.findIndex(
+			(i) => i.price === delta[PriceLevel.PRICE]
+		);
+		if (foundIndex !== -1) {
+			// Delete order level
+			if (delta[PriceLevel.SIZE] === 0) {
+				orderLevels.splice(foundIndex, 1);
+			} else {
+				// Update order level
+				orderLevels[foundIndex].size = delta[PriceLevel.SIZE];
+			}
+		} else {
+			orderLevels.push({
+				price: delta[PriceLevel.PRICE],
+				size: delta[PriceLevel.SIZE],
+				total: 0,
+			});
+
+			orderLevels.sort((a, b) => sortOrderLevels(a, b, sortDirection));
+		}
+
+		// orderLevels.forEach((level, index, array) => {
+		// 	level.total =
+		// 	index === 0
+		// 		? level.size
+		// 		: array.slice(0, index + 1).reduce(reducer).total,
+		// })
+	});
+	return orderLevels;
+}
+
+function reducer(a: [number, number], b: [number, number]): [number, number] {
+	return [0, a[PriceLevel.SIZE] + b[PriceLevel.SIZE]];
+}
+
+function sortPriceLevels(
+	a: [number, number],
+	b: [number, number],
+	sortDirection: SortDirection
+) {
+	if (sortDirection === SortDirection.ASC) {
+		return a[PriceLevel.PRICE] - b[PriceLevel.PRICE];
+	} else {
+		return b[PriceLevel.PRICE] - a[PriceLevel.PRICE];
+	}
+}
+
+function sortOrderLevels(
+	a: OrderLevel,
+	b: OrderLevel,
+	sortDirection: SortDirection
+) {
+	if (sortDirection === SortDirection.ASC) {
+		return a.price - b.price;
+	} else {
+		return b.price - a.price;
+	}
 }
