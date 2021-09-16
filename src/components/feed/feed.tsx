@@ -29,7 +29,7 @@ enum PriceLevel {
 	SIZE = 1,
 }
 
-enum SortDirection {
+export enum SortDirection {
 	ASC = 0,
 	DESC = 1,
 }
@@ -75,7 +75,6 @@ export const Feed = () => {
 		// TODO: Avoid asking for undefined
 		if (lastMessage) {
 			if (lastMessage.feed === "book_ui_1_snapshot") {
-				console.log("kaka");
 				setFeed({
 					bids: createOrderLevels(lastMessage.bids, SortDirection.ASC),
 					asks: createOrderLevels(lastMessage.asks, SortDirection.DESC),
@@ -84,8 +83,10 @@ export const Feed = () => {
 			} else if (
 				lastMessage.event === undefined &&
 				lastMessage.feed === "book_ui_1" &&
-				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0)
+				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0) &&
+				messageHistory.current.length < 20
 			) {
+				messageHistory.current.push(lastMessage);
 				setFeed((x) => {
 					return {
 						bids: updateOrderLevels(
@@ -120,7 +121,7 @@ export const Feed = () => {
 
 	return (
 		<div>
-			<div>{connectionStatus}</div>
+			<div>Orderbook: {connectionStatus}</div>
 			<div>
 				<button onClick={() => setConnectionState(ConnectionState.CONNECTED)}>
 					CONNECT
@@ -176,14 +177,14 @@ export const Feed = () => {
 	);
 };
 
-function createOrderLevels(
+export function createOrderLevels(
 	priceLevels: [number, number][],
 	sortDirection: SortDirection
 ): OrderLevel[] {
 	const orderLevels: OrderLevel[] = [];
 
 	const sortedPriceLevels = priceLevels.sort((a, b) =>
-		sortPriceLevels(a, b, sortDirection)
+		sort(a[PriceLevel.PRICE], b[PriceLevel.PRICE], sortDirection)
 	);
 
 	sortedPriceLevels.forEach((level, index, array) =>
@@ -193,13 +194,16 @@ function createOrderLevels(
 			total:
 				index === 0
 					? level[PriceLevel.SIZE]
-					: array.slice(0, index + 1).reduce(reducer)[PriceLevel.SIZE],
+					: array
+							.slice(0, index + 1)
+							.map((x) => x[PriceLevel.SIZE])
+							.reduce(reducer),
 		})
 	);
 	return orderLevels;
 }
 
-function updateOrderLevels(
+export function updateOrderLevels(
 	stateOrderLevels: OrderLevel[],
 	deltaPriceLevels: [number, number][],
 	sortDirection: SortDirection
@@ -225,43 +229,31 @@ function updateOrderLevels(
 				total: 0,
 			});
 
-			orderLevels.sort((a, b) => sortOrderLevels(a, b, sortDirection));
+			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
-
-		// orderLevels.forEach((level, index, array) => {
-		// 	level.total =
-		// 	index === 0
-		// 		? level.size
-		// 		: array.slice(0, index + 1).reduce(reducer).total,
-		// })
 	});
+
+	orderLevels.forEach((level, index, array) => {
+		level.total =
+			index === 0
+				? level.size
+				: [...array]
+						.slice(0, index + 1)
+						.map((x) => x.size)
+						.reduce(reducer);
+	});
+
 	return orderLevels;
 }
 
-function reducer(a: [number, number], b: [number, number]): [number, number] {
-	return [0, a[PriceLevel.SIZE] + b[PriceLevel.SIZE]];
+function reducer(previousValue: number, currentValue: number): number {
+	return previousValue + currentValue;
 }
 
-function sortPriceLevels(
-	a: [number, number],
-	b: [number, number],
-	sortDirection: SortDirection
-) {
+function sort(a: number, b: number, sortDirection: SortDirection) {
 	if (sortDirection === SortDirection.ASC) {
-		return a[PriceLevel.PRICE] - b[PriceLevel.PRICE];
+		return a - b;
 	} else {
-		return b[PriceLevel.PRICE] - a[PriceLevel.PRICE];
-	}
-}
-
-function sortOrderLevels(
-	a: OrderLevel,
-	b: OrderLevel,
-	sortDirection: SortDirection
-) {
-	if (sortDirection === SortDirection.ASC) {
-		return a.price - b.price;
-	} else {
-		return b.price - a.price;
+		return b - a;
 	}
 }
