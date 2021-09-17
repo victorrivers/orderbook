@@ -62,11 +62,6 @@ export function useWebSocket<T>(
 
 	const detachEvenHandlers = useCallback((webSocket?: WebSocket) => {
 		if (webSocket) {
-			console.log(
-				"REMOVE EVENT LISTENERS",
-				ReadyState[readyState].toString(),
-				ConnectionState[connectionState].toString()
-			);
 			webSocket.removeEventListener("open", onWebSocketOpen);
 			webSocket.removeEventListener("message", onWebSocketMessage);
 			webSocket.removeEventListener("error", onWebSocketError);
@@ -90,7 +85,6 @@ export function useWebSocket<T>(
 			case ConnectionState.DISCONNECTED:
 				if (webSocketRef.current) {
 					webSocketRef.current.close();
-					console.log("DISCONNECT");
 				}
 				detachEvenHandlers(webSocketRef.current);
 				break;
@@ -98,7 +92,6 @@ export function useWebSocket<T>(
 			default:
 				break;
 		}
-		console.log("useEffect", socketUrl, connectionState);
 
 		return () => {
 			detachEvenHandlers();

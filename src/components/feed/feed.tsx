@@ -39,14 +39,11 @@ export enum SortDirection {
  * - Handle Ready states: Error, Close, etc.
  * - Display 2 decimals.
  */
-export const Feed = () => {
+export function Feed() {
 	const [feed, setFeed] = useState<FeedData>({
 		bids: [],
 		asks: [],
 	});
-	console.log("RENDER");
-
-	const messageHistory = useRef<Message[]>([]);
 
 	const [connectionState, setConnectionState] = useState(
 		ConnectionState.DISCONNECTED
@@ -56,6 +53,8 @@ export const Feed = () => {
 		"wss://www.cryptofacilities.com/ws/v1",
 		connectionState
 	);
+
+	const messageHistory = useRef<Message[]>([]);
 
 	useEffect(() => {
 		setConnectionState(ConnectionState.CONNECTED);
@@ -79,35 +78,38 @@ export const Feed = () => {
 					bids: createOrderLevels(lastMessage.bids, SortDirection.ASC),
 					asks: createOrderLevels(lastMessage.asks, SortDirection.DESC),
 				});
-				messageHistory.current.push(lastMessage);
 			} else if (
 				lastMessage.event === undefined &&
 				lastMessage.feed === "book_ui_1" &&
-				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0) &&
-				messageHistory.current.length < 20
+				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0)
 			) {
 				messageHistory.current.push(lastMessage);
-				setFeed((x) => {
-					return {
-						bids: updateOrderLevels(
-							x.bids,
-							lastMessage.bids,
-							SortDirection.ASC
-						),
-						asks: updateOrderLevels(
-							x.asks,
-							lastMessage.asks,
-							SortDirection.DESC
-						),
-					};
-				});
 			}
 		}
 	}, [lastMessage]);
 
 	useEffect(() => {
-		console.log("messageHistory", messageHistory.current);
-	}, [JSON.stringify(messageHistory.current)]);
+
+		if (messageHistory.current.length > 0) {
+
+			const deltaMessage = messageHistory.current[messageHistory.current.length - 1];
+			messageHistory.current.splice(messageHistory.current.length - 1 , 1);
+
+			setFeed({
+				bids: updateOrderLevels(
+					feed.bids,
+					deltaMessage.bids,
+					SortDirection.ASC,
+				),
+				asks: updateOrderLevels(
+					feed.asks,
+					deltaMessage.asks,
+					SortDirection.DESC,
+				)
+			});
+		}
+
+	}, [messageHistory.current.length, feed.bids, feed.asks]);
 
 	const connectionStatus = {
 		[ReadyState.CONNECTING]: "Connecting",
@@ -206,7 +208,7 @@ export function createOrderLevels(
 export function updateOrderLevels(
 	stateOrderLevels: OrderLevel[],
 	deltaPriceLevels: [number, number][],
-	sortDirection: SortDirection
+	sortDirection: SortDirection,
 ): OrderLevel[] {
 	const orderLevels: OrderLevel[] = [...stateOrderLevels];
 
@@ -223,12 +225,14 @@ export function updateOrderLevels(
 				orderLevels[foundIndex].size = delta[PriceLevel.SIZE];
 			}
 		} else {
+			// New price order level
+			if (delta[PriceLevel.SIZE] > 0) { 
 			orderLevels.push({
 				price: delta[PriceLevel.PRICE],
 				size: delta[PriceLevel.SIZE],
 				total: 0,
 			});
-
+		}
 			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
 	});
