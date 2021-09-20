@@ -1,0 +1,64 @@
+$space-large: 16px;
+$space-medium: 8px;
+$space-small: 4px;
+
+.feed {
+	color: #fff;
+	background-color: #131723;
+}
+
+.header {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	border-bottom: 2px solid gray;
+	padding: $space-large;
+
+	.leftText {
+		position: absolute;
+		left: 0;
+		top: 0;
+		padding: $space-large;
+	}
+}
+
+.flex {
+	display: flex;
+	align-items: flex-start;
+}
+
+.table {
+	border-collapse: collapse;
+	width: 50%;
+
+	th,
+	td {
+		text-align: right;
+		padding-right: 10%;
+	}
+
+	th {
+		color: #6b707b;
+		border-bottom: 1px solid gray;
+		padding-top: $space-medium;
+		padding-bottom: $space-medium;
+	}
+
+	td {
+		font-family: "Courier New", Courier, monospace;
+		font-weight: 700;
+		text-align: right;
+		padding-right: 10%;
+		padding-top: $space-small;
+		padding-bottom: $space-small;
+	}
+
+	.cellBidPrice {
+		color: limegreen;
+	}
+
+	.cellAskPrice {
+		color: tomato;
+	}
+}

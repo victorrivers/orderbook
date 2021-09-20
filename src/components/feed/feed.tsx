@@ -4,7 +4,8 @@ import {
 	ReadyState,
 	useWebSocket,
 } from "../../utils/use-web-socket";
-import styles from "./feed.module.css";
+import { Spread } from "../spread/spread";
+import styles from "./feed.module.scss";
 
 interface Message {
 	event: string;
@@ -41,8 +42,8 @@ export enum SortDirection {
  */
 export function Feed() {
 	const [feed, setFeed] = useState<FeedData>({
-		bids: [],
-		asks: [],
+		bids: [{ price: 0, size: 0, total: 0 }],
+		asks: [{ price: 0, size: 0, total: 0 }],
 	});
 
 	const [connectionState, setConnectionState] = useState(
@@ -89,26 +90,24 @@ export function Feed() {
 	}, [lastMessage]);
 
 	useEffect(() => {
-
 		if (messageHistory.current.length > 0) {
-
-			const deltaMessage = messageHistory.current[messageHistory.current.length - 1];
-			messageHistory.current.splice(messageHistory.current.length - 1 , 1);
+			const deltaMessage =
+				messageHistory.current[messageHistory.current.length - 1];
+			messageHistory.current.splice(messageHistory.current.length - 1, 1);
 
 			setFeed({
 				bids: updateOrderLevels(
 					feed.bids,
 					deltaMessage.bids,
-					SortDirection.ASC,
+					SortDirection.ASC
 				),
 				asks: updateOrderLevels(
 					feed.asks,
 					deltaMessage.asks,
-					SortDirection.DESC,
-				)
+					SortDirection.DESC
+				),
 			});
 		}
-
 	}, [messageHistory.current.length, feed.bids, feed.asks]);
 
 	const connectionStatus = {
@@ -122,21 +121,29 @@ export function Feed() {
 	function handleToggleFeed() {}
 
 	return (
-		<div>
-			<div>Orderbook: {connectionStatus}</div>
-			<div>
-				<button onClick={() => setConnectionState(ConnectionState.CONNECTED)}>
-					CONNECT
-				</button>
-				<button
-					onClick={() => setConnectionState(ConnectionState.DISCONNECTED)}
-				>
-					DISCONNECT
-				</button>
+		<div className={styles.feed}>
+			<div className={styles.header}>
+				<span className={styles.leftText}>Order Book</span>
+				<Spread bidPrice={feed.bids[0].price} askPrice={feed.asks[0].price} />
+				<div style={{ position: "absolute", right: 0, top: 0 }}>
+					<div>Connection Status: {connectionStatus}</div>
+					<div>
+						<button
+							onClick={() => setConnectionState(ConnectionState.CONNECTED)}
+						>
+							CONNECT
+						</button>
+						<button
+							onClick={() => setConnectionState(ConnectionState.DISCONNECTED)}
+						>
+							DISCONNECT
+						</button>
+					</div>
+				</div>
 			</div>
 
 			<div className={styles.flex}>
-				<table>
+				<table className={styles.table}>
 					<thead>
 						<tr>
 							<th>TOTAL</th>
@@ -149,12 +156,12 @@ export function Feed() {
 							<tr key={`bid-level-${index}`}>
 								<td>{level.total}</td>
 								<td>{level.size}</td>
-								<td>{level.price}</td>
+								<td className={styles.cellBidPrice}>{level.price}</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
-				<table>
+				<table className={styles.table}>
 					<thead>
 						<tr>
 							<th>PRICE</th>
@@ -165,7 +172,7 @@ export function Feed() {
 					<tbody>
 						{feed.asks.map((level, index) => (
 							<tr key={`ask-level-${index}`}>
-								<td>{level.price}</td>
+								<td className={styles.cellAskPrice}>{level.price}</td>
 								<td>{level.size}</td>
 								<td>{level.total}</td>
 							</tr>
@@ -173,11 +180,10 @@ export function Feed() {
 					</tbody>
 				</table>
 			</div>
-			<hr />
 			<button onClick={handleToggleFeed}>Toggle Feed</button>
 		</div>
 	);
-};
+}
 
 export function createOrderLevels(
 	priceLevels: [number, number][],
@@ -208,7 +214,7 @@ export function createOrderLevels(
 export function updateOrderLevels(
 	stateOrderLevels: OrderLevel[],
 	deltaPriceLevels: [number, number][],
-	sortDirection: SortDirection,
+	sortDirection: SortDirection
 ): OrderLevel[] {
 	const orderLevels: OrderLevel[] = [...stateOrderLevels];
 
@@ -226,13 +232,13 @@ export function updateOrderLevels(
 			}
 		} else {
 			// New price order level
-			if (delta[PriceLevel.SIZE] > 0) { 
-			orderLevels.push({
-				price: delta[PriceLevel.PRICE],
-				size: delta[PriceLevel.SIZE],
-				total: 0,
-			});
-		}
+			if (delta[PriceLevel.SIZE] > 0) {
+				orderLevels.push({
+					price: delta[PriceLevel.PRICE],
+					size: delta[PriceLevel.SIZE],
+					total: 0,
+				});
+			}
 			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
 	});
