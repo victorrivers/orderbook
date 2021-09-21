@@ -3,85 +3,85 @@ $space-medium: 8px;
 $space-small: 4px;
 
 .feed {
-  color: #fff;
-  background-color: #131723;
+	color: #fff;
+	background-color: #131723;
 }
 
 .header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  border-bottom: 2px solid gray;
-  padding: $space-large;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	border-bottom: 2px solid gray;
+	padding: $space-large;
 
-  .leftText {
-    position: absolute;
-    left: 0;
-    top: 0;
-    padding: $space-large;
-  }
+	.leftText {
+		position: absolute;
+		left: 0;
+		top: 0;
+		padding: $space-large;
+	}
 }
 
 .flex {
-  display: flex;
-  align-items: flex-start;
+	display: flex;
+	align-items: flex-start;
 }
 
 .tables {
-  max-height: 800px;
-  overflow: auto;
+	max-height: 800px;
+	overflow: auto;
 }
 
 .table {
-  border-collapse: collapse;
-  width: 50%;
+	border-collapse: collapse;
+	width: 50%;
 
-  th,
-  td {
-    text-align: right;
-    padding-right: 10%;
-  }
+	th,
+	td {
+		text-align: right;
+		padding-right: 10%;
+	}
 
-  th {
-    color: #6b707b;
-    border-bottom: 1px solid gray;
-    padding-top: $space-medium;
-    padding-bottom: $space-medium;
-  }
+	th {
+		color: #6b707b;
+		border-bottom: 1px solid gray;
+		padding-top: $space-medium;
+		padding-bottom: $space-medium;
+	}
 
-  td {
-    font-family: "Courier New", Courier, monospace;
-    font-weight: 700;
-    text-align: right;
-    padding-right: 10%;
-    padding-top: $space-small;
-    padding-bottom: $space-small;
-  }
+	td {
+		font-family: "Courier New", Courier, monospace;
+		font-weight: 700;
+		text-align: right;
+		padding-right: 10%;
+		padding-top: $space-small;
+		padding-bottom: $space-small;
+	}
 
-  .cellBidPrice {
-    color: limegreen;
-  }
+	.cellBidPrice {
+		color: limegreen;
+	}
 
-  .cellAskPrice {
-    color: tomato;
-  }
+	.cellAskPrice {
+		color: tomato;
+	}
 }
 
 .footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $space-large;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: $space-large;
 
-  button {
-    background-color: #6515d0;
-    color: #fff;
-    padding: 12px $space-large;
-    width: 148px;
-    font-size: 14px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
+	button {
+		background-color: #6515d0;
+		color: #fff;
+		padding: 12px $space-large;
+		width: 148px;
+		font-size: 14px;
+		border: none;
+		border-radius: 5px;
+		cursor: pointer;
+	}
 }
