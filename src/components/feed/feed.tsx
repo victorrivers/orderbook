@@ -111,45 +111,49 @@ export function Feed() {
 				</div>
 			</div>
 
-			<div className={styles.flex}>
-				<table className={styles.table}>
-					<thead>
-						<tr>
-							<th>TOTAL</th>
-							<th>SIZE</th>
-							<th>PRICE</th>
-						</tr>
-					</thead>
-					<tbody>
-						{feed.bids.map((level, index) => (
-							<tr key={`bid-level-${index}`}>
-								<td>{level.total}</td>
-								<td>{level.size}</td>
-								<td className={styles.cellBidPrice}>{level.price}</td>
+			<div className={styles.tables}>
+				<div className={styles.flex}>
+					<table className={styles.table}>
+						<thead>
+							<tr>
+								<th>TOTAL</th>
+								<th>SIZE</th>
+								<th>PRICE</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
-				<table className={styles.table}>
-					<thead>
-						<tr>
-							<th>PRICE</th>
-							<th>SIZE</th>
-							<th>TOTAL</th>
-						</tr>
-					</thead>
-					<tbody>
-						{feed.asks.map((level, index) => (
-							<tr key={`ask-level-${index}`}>
-								<td className={styles.cellAskPrice}>{level.price}</td>
-								<td>{level.size}</td>
-								<td>{level.total}</td>
+						</thead>
+						<tbody>
+							{feed.bids.map((level, index) => (
+								<tr key={`bid-level-${index}`}>
+									<td>{level.total}</td>
+									<td>{level.size}</td>
+									<td className={styles.cellBidPrice}>{level.price}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+					<table className={styles.table}>
+						<thead>
+							<tr>
+								<th>PRICE</th>
+								<th>SIZE</th>
+								<th>TOTAL</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{feed.asks.map((level, index) => (
+								<tr key={`ask-level-${index}`}>
+									<td className={styles.cellAskPrice}>{level.price}</td>
+									<td>{level.size}</td>
+									<td>{level.total}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</div>
-			<button onClick={handleToggleFeed}>Toggle Feed</button>
+			<footer className={styles.footer}>
+				<button onClick={handleToggleFeed}>Toggle Feed</button>
+			</footer>
 		</div>
 	);
 }

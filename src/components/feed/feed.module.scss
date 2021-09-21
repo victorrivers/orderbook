@@ -28,6 +28,11 @@ $space-small: 4px;
 	align-items: flex-start;
 }
 
+.tables {
+	max-height: 800px;
+	overflow: auto;
+}
+
 .table {
 	border-collapse: collapse;
 	width: 50%;
@@ -60,5 +65,23 @@ $space-small: 4px;
 
 	.cellAskPrice {
 		color: tomato;
+	}
+}
+
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: $space-large;
+
+	button {
+		background-color: #6515d0;
+		color: #FFF;
+		padding: 12px $space-large;
+		width: 148px;
+		font-size: 14px;
+		border: none;
+		border-radius: 5px;
+		cursor: pointer;
 	}
 }
