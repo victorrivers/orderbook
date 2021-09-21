@@ -10,19 +10,25 @@ export enum ReadyState {
 
 export enum ConnectionState {
 	UNINITIALIZED = 0,
-	CONNECTED = 1,
-	DISCONNECTED = 2,
+	ACTIVE = 1,
+	INACTIVE = 2,
 }
 
-export function useWebSocket<T>(
+interface WebSocketData {
+    sendMessage: (message: Object) => void;
+    lastMessage: Object;
+    readyState: ReadyState;
+};
+
+export function useWebSocket(
 	socketUrl: string,
 	connectionState: ConnectionState
-) {
+): WebSocketData {
 	const [readyState, setReadyState] = useState<ReadyState>(
 		ReadyState.UNINSTANTIATED
 	);
 
-	const [lastMessage, setLastMessage] = useState<T>();
+	const [lastMessage, setLastMessage] = useState({});
 
 	const webSocketRef = useRef<WebSocket>();
 
@@ -30,7 +36,7 @@ export function useWebSocket<T>(
 		setReadyState(this.readyState);
 	}
 
-	function onWebSocketMessage(this: WebSocket, ev: Event & { data: string }) {
+	function onWebSocketMessage(this: WebSocket, ev: MessageEvent<string>) {
 		setLastMessage(JSON.parse(ev.data));
 	}
 
@@ -51,15 +57,6 @@ export function useWebSocket<T>(
 		}
 	}, []);
 
-	function closeConnection() {
-		if (
-			webSocketRef.current &&
-			webSocketRef.current.readyState !== ReadyState.CLOSED
-		) {
-			webSocketRef.current.close();
-		}
-	}
-
 	const detachEvenHandlers = useCallback((webSocket?: WebSocket) => {
 		if (webSocket) {
 			webSocket.removeEventListener("open", onWebSocketOpen);
@@ -71,7 +68,7 @@ export function useWebSocket<T>(
 
 	useEffect(() => {
 		switch (connectionState) {
-			case ConnectionState.CONNECTED:
+			case ConnectionState.ACTIVE:
 				if (socketUrl) {
 					webSocketRef.current = new WebSocket(socketUrl);
 					const socket = webSocketRef.current;
@@ -82,7 +79,7 @@ export function useWebSocket<T>(
 					socket.addEventListener("close", onWebSocketClose);
 				}
 				break;
-			case ConnectionState.DISCONNECTED:
+			case ConnectionState.INACTIVE:
 				if (webSocketRef.current) {
 					webSocketRef.current.close();
 				}
@@ -98,5 +95,5 @@ export function useWebSocket<T>(
 		};
 	}, [socketUrl, connectionState, detachEvenHandlers]);
 
-	return { sendMessage, lastMessage, readyState, closeConnection };
+	return { sendMessage, lastMessage, readyState };
 }
