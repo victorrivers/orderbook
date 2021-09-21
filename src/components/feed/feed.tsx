@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { DataMessage, Product, useData } from "../../utils/use-data";
 import {
 	ConnectionState,
-	ReadyState,
-	useWebSocket,
 } from "../../utils/use-web-socket";
 import styles from "./feed.module.css";
-
-interface Message {
-	event: string;
-	feed: string;
-	bids: [number, number][];
-	asks: [number, number][];
-}
 
 type OrderLevel = {
 	price: number;
@@ -40,96 +32,78 @@ export enum SortDirection {
  * - Display 2 decimals.
  */
 export function Feed() {
+	const [selectedProduct, setSelectedProduct] = useState<Product>(Product.PI_XBTUSD);
+
 	const [feed, setFeed] = useState<FeedData>({
 		bids: [],
 		asks: [],
 	});
 
 	const [connectionState, setConnectionState] = useState(
-		ConnectionState.DISCONNECTED
+		ConnectionState.INACTIVE
 	);
 
-	const { sendMessage, lastMessage, readyState } = useWebSocket<Message>(
-		"wss://www.cryptofacilities.com/ws/v1",
-		connectionState
+	const { snapshotMessage, deltaMessage } = useData(
+		connectionState, selectedProduct
 	);
 
-	const messageHistory = useRef<Message[]>([]);
+	const messageHistory = useRef<DataMessage[]>([]);
 
 	useEffect(() => {
-		setConnectionState(ConnectionState.CONNECTED);
+		setConnectionState(ConnectionState.ACTIVE);
 	}, []);
 
 	useEffect(() => {
-		if (readyState === ReadyState.OPEN) {
-			sendMessage({
-				event: "subscribe",
-				feed: "book_ui_1",
-				product_ids: ["PI_XBTUSD"],
-			});
-		}
-	}, [readyState, sendMessage]);
+		setFeed({
+			bids: createOrderLevels(snapshotMessage.bids, SortDirection.ASC),
+			asks: createOrderLevels(snapshotMessage.asks, SortDirection.DESC),
+		});
+	}, [snapshotMessage]);
 
 	useEffect(() => {
-		// TODO: Avoid asking for undefined
-		if (lastMessage) {
-			if (lastMessage.feed === "book_ui_1_snapshot") {
-				setFeed({
-					bids: createOrderLevels(lastMessage.bids, SortDirection.ASC),
-					asks: createOrderLevels(lastMessage.asks, SortDirection.DESC),
-				});
-			} else if (
-				lastMessage.event === undefined &&
-				lastMessage.feed === "book_ui_1" &&
-				(lastMessage.bids.length > 0 || lastMessage.asks.length > 0)
-			) {
-				messageHistory.current.push(lastMessage);
-			}
-		}
-	}, [lastMessage]);
+		messageHistory.current.push(deltaMessage);
+	}, [deltaMessage]);
+
 
 	useEffect(() => {
 
 		if (messageHistory.current.length > 0) {
 
-			const deltaMessage = messageHistory.current[messageHistory.current.length - 1];
+			const delta = messageHistory.current[messageHistory.current.length - 1];
 			messageHistory.current.splice(messageHistory.current.length - 1 , 1);
 
 			setFeed({
 				bids: updateOrderLevels(
 					feed.bids,
-					deltaMessage.bids,
+					delta.bids,
 					SortDirection.ASC,
 				),
 				asks: updateOrderLevels(
 					feed.asks,
-					deltaMessage.asks,
+					delta.asks,
 					SortDirection.DESC,
 				)
 			});
 		}
-
 	}, [messageHistory.current.length, feed.bids, feed.asks]);
 
-	const connectionStatus = {
-		[ReadyState.CONNECTING]: "Connecting",
-		[ReadyState.OPEN]: "Open",
-		[ReadyState.CLOSING]: "Closing",
-		[ReadyState.CLOSED]: "Closed",
-		[ReadyState.UNINSTANTIATED]: "Uninstantiated",
-	}[readyState];
-
-	function handleToggleFeed() {}
+	function handleToggleFeed() {
+		if (selectedProduct === Product.PI_XBTUSD) {
+			setSelectedProduct(Product.PI_ETHUSD);
+		} else {
+			setSelectedProduct(Product.PI_XBTUSD);
+		}
+	}
 
 	return (
 		<div>
-			<div>Orderbook: {connectionStatus}</div>
+			<div>Orderbook</div>
 			<div>
-				<button onClick={() => setConnectionState(ConnectionState.CONNECTED)}>
+				<button onClick={() => setConnectionState(ConnectionState.ACTIVE)}>
 					CONNECT
 				</button>
 				<button
-					onClick={() => setConnectionState(ConnectionState.DISCONNECTED)}
+					onClick={() => setConnectionState(ConnectionState.INACTIVE)}
 				>
 					DISCONNECT
 				</button>
