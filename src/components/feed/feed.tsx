@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { toFormattedNumber } from "../../utils/locale";
 import { DataMessage, Product, useData } from "../../utils/use-data";
 import { ConnectionState } from "../../utils/use-web-socket";
 import { Spread } from "../spread/spread";
@@ -26,7 +25,15 @@ export enum SortDirection {
 	DESC = 1,
 }
 
-export function Feed() {
+interface FeedProps {
+	totalRows: number;
+	formatIntNumber: (value: number) => string;
+	formatNumber: (value: number) => string;
+}
+
+export function Feed(props: FeedProps) {
+	const { totalRows, formatIntNumber, formatNumber } = props;
+
 	const [selectedProduct, setSelectedProduct] = useState<Product>(
 		Product.PI_XBTUSD
 	);
@@ -101,49 +108,47 @@ export function Feed() {
 				</div>
 			</div>
 
-			<div className={styles.tables}>
-				<div className={styles.flex}>
-					<table className={styles.table}>
-						<thead>
-							<tr>
-								<th>TOTAL</th>
-								<th>SIZE</th>
-								<th>PRICE</th>
+			<div className={styles.flex}>
+				<table className={styles.table}>
+					<thead>
+						<tr>
+							<th>TOTAL</th>
+							<th>SIZE</th>
+							<th>PRICE</th>
+						</tr>
+					</thead>
+					<tbody>
+						{feed.bids.slice(0, totalRows).map((level, index) => (
+							<tr key={`bid-level-${index}`}>
+								<td>{formatIntNumber(level.total)}</td>
+								<td>{formatIntNumber(level.size)}</td>
+								<td className={styles.cellBidPrice}>
+									{formatNumber(level.price)}
+								</td>
 							</tr>
-						</thead>
-						<tbody>
-							{feed.bids.map((level, index) => (
-								<tr key={`bid-level-${index}`}>
-									<td>{toFormattedNumber(level.total)}</td>
-									<td>{toFormattedNumber(level.size)}</td>
-									<td className={styles.cellBidPrice}>
-										{toFormattedNumber(level.price, 2)}
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-					<table className={styles.table}>
-						<thead>
-							<tr>
-								<th>PRICE</th>
-								<th>SIZE</th>
-								<th>TOTAL</th>
+						))}
+					</tbody>
+				</table>
+				<table className={styles.table}>
+					<thead>
+						<tr>
+							<th>PRICE</th>
+							<th>SIZE</th>
+							<th>TOTAL</th>
+						</tr>
+					</thead>
+					<tbody>
+						{feed.asks.slice(0, totalRows).map((level, index) => (
+							<tr key={`ask-level-${index}`}>
+								<td className={styles.cellAskPrice}>
+									{formatNumber(level.price)}
+								</td>
+								<td>{formatIntNumber(level.size)}</td>
+								<td>{formatIntNumber(level.total)}</td>
 							</tr>
-						</thead>
-						<tbody>
-							{feed.asks.map((level, index) => (
-								<tr key={`ask-level-${index}`}>
-									<td className={styles.cellAskPrice}>
-										{toFormattedNumber(level.price, 2)}
-									</td>
-									<td>{toFormattedNumber(level.size)}</td>
-									<td>{toFormattedNumber(level.total)}</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+						))}
+					</tbody>
+				</table>
 			</div>
 			<footer className={styles.footer}>
 				<button onClick={handleToggleFeed}>Toggle Feed</button>
