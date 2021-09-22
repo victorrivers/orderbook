@@ -36,11 +36,11 @@ $space-small: 4px;
 	td {
 		text-align: right;
 		padding-right: 10%;
+		width: 33.33%;
 	}
 
 	th {
 		color: #6b707b;
-		border-bottom: 1px solid gray;
 		padding-top: $space-medium;
 		padding-bottom: $space-medium;
 	}
@@ -54,12 +54,41 @@ $space-small: 4px;
 		padding-bottom: $space-small;
 	}
 
+	.headerRow {
+		border-bottom: 1px solid gray;
+	}
+
 	.cellBidPrice {
-		color: limegreen;
+		color: rgb(61, 168, 97);
 	}
 
 	.cellAskPrice {
-		color: tomato;
+		color: rgb(204, 33, 33);
+	}
+
+	.tr {
+		position: relative;
+
+		.depthLevelBid,
+		.depthLevelAsk {
+			width: auto;
+			position: absolute;
+			bottom: 0;
+			top: 0;
+			padding: 0;
+		}
+
+		.depthLevelBid {
+			background-color: rgba(18, 110, 26, 0.356);
+			left: 100%;
+			right: 0;
+		}
+
+		.depthLevelAsk {
+			background-color: rgba(119, 15, 76, 0.295);
+			left: 0;
+			right: 100%;
+		}
 	}
 }
 

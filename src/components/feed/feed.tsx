@@ -8,6 +8,7 @@ type OrderLevel = {
 	price: number;
 	size: number;
 	total: number;
+	depth: number;
 };
 
 type FeedData = {
@@ -39,8 +40,8 @@ export function Feed(props: FeedProps) {
 	);
 
 	const [feed, setFeed] = useState<FeedData>({
-		bids: [{ price: 0, size: 0, total: 0 }],
-		asks: [{ price: 0, size: 0, total: 0 }],
+		bids: [{ price: 0, size: 0, total: 0, depth: 0 }],
+		asks: [{ price: 0, size: 0, total: 0, depth: 0 }],
 	});
 
 	const [connectionState, setConnectionState] = useState(
@@ -75,11 +76,21 @@ export function Feed(props: FeedProps) {
 			messageHistory.current.splice(messageHistory.current.length - 1, 1);
 
 			setFeed({
-				bids: updateOrderLevels(feed.bids, delta.bids, SortDirection.ASC),
-				asks: updateOrderLevels(feed.asks, delta.asks, SortDirection.DESC),
+				bids: updateOrderLevels(
+					feed.bids,
+					delta.bids,
+					SortDirection.ASC,
+					totalRows
+				),
+				asks: updateOrderLevels(
+					feed.asks,
+					delta.asks,
+					SortDirection.DESC,
+					totalRows
+				),
 			});
 		}
-	}, [messageHistory.current.length, feed.bids, feed.asks]);
+	}, [messageHistory.current.length, feed.bids, feed.asks, totalRows]);
 
 	function handleToggleFeed() {
 		if (selectedProduct === Product.PI_XBTUSD) {
@@ -111,7 +122,7 @@ export function Feed(props: FeedProps) {
 			<div className={styles.flex}>
 				<table className={styles.table}>
 					<thead>
-						<tr>
+						<tr className={styles.headerRow}>
 							<th>TOTAL</th>
 							<th>SIZE</th>
 							<th>PRICE</th>
@@ -119,19 +130,23 @@ export function Feed(props: FeedProps) {
 					</thead>
 					<tbody>
 						{feed.bids.slice(0, totalRows).map((level, index) => (
-							<tr key={`bid-level-${index}`}>
+							<tr key={`bid-level-${index}`} className={styles.tr}>
 								<td>{formatIntNumber(level.total)}</td>
 								<td>{formatIntNumber(level.size)}</td>
 								<td className={styles.cellBidPrice}>
 									{formatNumber(level.price)}
 								</td>
+								<td
+									className={styles.depthLevelBid}
+									style={{ left: `${level.depth}%` }}
+								/>
 							</tr>
 						))}
 					</tbody>
 				</table>
 				<table className={styles.table}>
 					<thead>
-						<tr>
+						<tr className={styles.headerRow}>
 							<th>PRICE</th>
 							<th>SIZE</th>
 							<th>TOTAL</th>
@@ -139,12 +154,16 @@ export function Feed(props: FeedProps) {
 					</thead>
 					<tbody>
 						{feed.asks.slice(0, totalRows).map((level, index) => (
-							<tr key={`ask-level-${index}`}>
+							<tr key={`ask-level-${index}`} className={styles.tr}>
 								<td className={styles.cellAskPrice}>
 									{formatNumber(level.price)}
 								</td>
 								<td>{formatIntNumber(level.size)}</td>
 								<td>{formatIntNumber(level.total)}</td>
+								<td
+									className={styles.depthLevelAsk}
+									style={{ right: `${level.depth}%` }}
+								/>
 							</tr>
 						))}
 					</tbody>
@@ -178,6 +197,7 @@ export function createOrderLevels(
 							.slice(0, index + 1)
 							.map((x) => x[PriceLevel.SIZE])
 							.reduce(reducer),
+			depth: 100,
 		})
 	);
 	return orderLevels;
@@ -186,7 +206,8 @@ export function createOrderLevels(
 export function updateOrderLevels(
 	stateOrderLevels: OrderLevel[],
 	deltaPriceLevels: [number, number][],
-	sortDirection: SortDirection
+	sortDirection: SortDirection,
+	totalItems: number
 ): OrderLevel[] {
 	const orderLevels: OrderLevel[] = [...stateOrderLevels];
 
@@ -209,12 +230,14 @@ export function updateOrderLevels(
 					price: delta[PriceLevel.PRICE],
 					size: delta[PriceLevel.SIZE],
 					total: 0,
+					depth: 0,
 				});
 			}
 			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
 	});
 
+	let highestTotal = 0;
 	orderLevels.forEach((level, index, array) => {
 		level.total =
 			index === 0
@@ -223,9 +246,16 @@ export function updateOrderLevels(
 						.slice(0, index + 1)
 						.map((x) => x.size)
 						.reduce(reducer);
+
+		if (index < totalItems) {
+			highestTotal = Math.max(highestTotal, level.total);
+		}
 	});
 
-	return orderLevels;
+	return orderLevels.map((x) => ({
+		...x,
+		depth: 100 - (x.total * 100) / highestTotal,
+	}));
 }
 
 function reducer(previousValue: number, currentValue: number): number {
