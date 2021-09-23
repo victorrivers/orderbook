@@ -1,11 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 interface FramesPerSecondResult {
-    elapsedTime: number;
-    currentFps: number;
+	elapsedTime: number;
+	currentFps: number;
 }
 
-export function useFramesPerSecond(stop:boolean, fps:number): FramesPerSecondResult {
+export function useFramesPerSecond(
+	stop: boolean,
+	fps: number
+): FramesPerSecondResult {
 	const handle = useRef(0);
 	const frameCount = useRef(0);
 	const fpsInterval = useRef(0);
@@ -14,10 +17,12 @@ export function useFramesPerSecond(stop:boolean, fps:number): FramesPerSecondRes
 	const then = useRef(0);
 	const elapsed = useRef(0);
 
-	const [result, setResult] = useState<FramesPerSecondResult>({ elapsedTime: 0, currentFps: 0 });
+	const [result, setResult] = useState<FramesPerSecondResult>({
+		elapsedTime: 0,
+		currentFps: 0,
+	});
 
 	const animate = useCallback(() => {
-
 		handle.current = requestAnimationFrame(animate);
 
 		now.current = Date.now();
@@ -26,13 +31,17 @@ export function useFramesPerSecond(stop:boolean, fps:number): FramesPerSecondRes
 		if (elapsed.current > fpsInterval.current) {
 			then.current = now.current - (elapsed.current % fpsInterval.current);
 			var sinceStart = now.current - startTime.current;
-			var currentFps = Math.round(1000 / (sinceStart / ++frameCount.current) * 100) / 100;
-			setResult({ elapsedTime: Math.round(sinceStart / 1000 * 100) / 100, currentFps });
+			var currentFps =
+				Math.round((1000 / (sinceStart / ++frameCount.current)) * 100) / 100;
+			setResult({
+				elapsedTime: Math.round((sinceStart / 1000) * 100) / 100,
+				currentFps,
+			});
 		}
-	},[])
+	}, []);
 
-	useEffect(()=>{
-		if (stop){
+	useEffect(() => {
+		if (stop) {
 			cancelAnimationFrame(handle.current);
 		} else {
 			fpsInterval.current = 1000 / fps;
@@ -41,7 +50,7 @@ export function useFramesPerSecond(stop:boolean, fps:number): FramesPerSecondRes
 			frameCount.current = 0;
 			animate();
 		}
-	},[fps, stop, animate]);
+	}, [fps, stop, animate]);
 
 	return result;
 }

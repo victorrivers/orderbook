@@ -5,7 +5,8 @@ export function Layout(): JSX.Element {
 	const locale = userLocale();
 
 	const formatIntNumberFn = (value: number) => toFormattedNumber(value, locale);
-	const formatNumberFn = (value: number) => toFormattedNumber(value, locale, 2);
+	const formatNumberFn = (value: number, digits?: number) =>
+		toFormattedNumber(value, locale, digits);
 
 	return (
 		<Feed

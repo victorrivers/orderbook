@@ -29,7 +29,7 @@ export enum SortDirection {
 interface FeedProps {
 	totalRows: number;
 	formatIntNumber: (value: number) => string;
-	formatNumber: (value: number) => string;
+	formatNumber: (value: number, digits?: number) => string;
 }
 
 export function Feed(props: FeedProps) {
@@ -102,25 +102,31 @@ export function Feed(props: FeedProps) {
 
 	return (
 		<div className={styles.feed}>
-			<div className={styles.header}>
-				<span className={styles.leftText}>Order Book</span>
-				<Spread bidPrice={feed.bids[0].price} askPrice={feed.asks[0].price} />
-				<div style={{ position: "absolute", right: 0, top: 0 }}>
-					<div>
-						<button onClick={() => setConnectionState(ConnectionState.ACTIVE)}>
-							CONNECT
-						</button>
-						<button
-							onClick={() => setConnectionState(ConnectionState.INACTIVE)}
-						>
-							DISCONNECT
-						</button>
-					</div>
-				</div>
-			</div>
+			<h1 className={styles.h1}>Order Book</h1>
 
 			<div className={styles.flex}>
-				<table className={styles.table}>
+				<div className={styles.spreadSection}>
+					<Spread
+						className={styles.spread}
+						bidPrice={feed.bids[0].price}
+						askPrice={feed.asks[0].price}
+					/>
+					<div style={{ position: "absolute", right: 0, top: 0 }}>
+						<div>
+							<button
+								onClick={() => setConnectionState(ConnectionState.ACTIVE)}
+							>
+								CONNECT
+							</button>
+							<button
+								onClick={() => setConnectionState(ConnectionState.INACTIVE)}
+							>
+								DISCONNECT
+							</button>
+						</div>
+					</div>
+				</div>
+				<table className={styles.tableBids}>
 					<thead>
 						<tr className={styles.headerRow}>
 							<th>TOTAL</th>
@@ -134,7 +140,7 @@ export function Feed(props: FeedProps) {
 								<td>{formatIntNumber(level.total)}</td>
 								<td>{formatIntNumber(level.size)}</td>
 								<td className={styles.cellBidPrice}>
-									{formatNumber(level.price)}
+									{formatNumber(level.price, 2)}
 								</td>
 								<td
 									className={styles.depthLevelBid}
@@ -144,7 +150,7 @@ export function Feed(props: FeedProps) {
 						))}
 					</tbody>
 				</table>
-				<table className={styles.table}>
+				<table className={styles.tableAsks}>
 					<thead>
 						<tr className={styles.headerRow}>
 							<th>PRICE</th>
@@ -156,7 +162,7 @@ export function Feed(props: FeedProps) {
 						{feed.asks.slice(0, totalRows).map((level, index) => (
 							<tr key={`ask-level-${index}`} className={styles.tr}>
 								<td className={styles.cellAskPrice}>
-									{formatNumber(level.price)}
+									{formatNumber(level.price, 2)}
 								</td>
 								<td>{formatIntNumber(level.size)}</td>
 								<td>{formatIntNumber(level.total)}</td>
