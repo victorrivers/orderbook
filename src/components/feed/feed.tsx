@@ -1,17 +1,26 @@
 import { useEffect, useRef, useState } from "react";
+import { useFormatter } from "../../utils/locale";
 import { DataMessage, Product, useData } from "../../utils/use-data";
 import { ConnectionState } from "../../utils/use-web-socket";
 import { Spread } from "../spread/spread";
 import styles from "./feed.module.scss";
 
-type OrderLevel = {
+export type OrderLevelSimple = {
 	price: number;
 	size: number;
 	total: number;
+};
+
+export type OrderLevel = OrderLevelSimple & {
 	depth: number;
 };
 
-type FeedData = {
+export enum SortDirection {
+	ASC = 0,
+	DESC = 1,
+}
+
+export type FeedData = {
 	bids: OrderLevel[];
 	asks: OrderLevel[];
 };
@@ -21,19 +30,14 @@ enum PriceLevel {
 	SIZE = 1,
 }
 
-export enum SortDirection {
-	ASC = 0,
-	DESC = 1,
-}
-
 interface FeedProps {
 	totalRows: number;
-	formatIntNumber: (value: number) => string;
-	formatNumber: (value: number, digits?: number) => string;
 }
 
 export function Feed(props: FeedProps) {
-	const { totalRows, formatIntNumber, formatNumber } = props;
+	const { totalRows } = props;
+
+	const { formatIntNumber, formatNumber } = useFormatter();
 
 	const [selectedProduct, setSelectedProduct] = useState<Product>(
 		Product.PI_XBTUSD
@@ -57,14 +61,33 @@ export function Feed(props: FeedProps) {
 
 	useEffect(() => {
 		setConnectionState(ConnectionState.ACTIVE);
+
+		function handleVisibilityChange() {
+			if (document.visibilityState === "hidden") {
+				setConnectionState(ConnectionState.INACTIVE);
+			}
+		}
+
+		document.addEventListener(
+			"visibilitychange",
+			handleVisibilityChange,
+			false
+		);
+
+		return () =>
+			document.removeEventListener(
+				"visibilitychange",
+				handleVisibilityChange,
+				false
+			);
 	}, []);
 
 	useEffect(() => {
-		setFeed({
-			bids: createOrderLevels(snapshotMessage.bids, SortDirection.ASC),
-			asks: createOrderLevels(snapshotMessage.asks, SortDirection.DESC),
-		});
-	}, [snapshotMessage]);
+		const bids = createOrderLevels(snapshotMessage.bids, SortDirection.ASC);
+		const asks = createOrderLevels(snapshotMessage.asks, SortDirection.DESC);
+
+		setFeed(createDepthLevels(bids, asks, totalRows));
+	}, [snapshotMessage, totalRows]);
 
 	useEffect(() => {
 		messageHistory.current.push(deltaMessage);
@@ -75,20 +98,10 @@ export function Feed(props: FeedProps) {
 			const delta = messageHistory.current[messageHistory.current.length - 1];
 			messageHistory.current.splice(messageHistory.current.length - 1, 1);
 
-			setFeed({
-				bids: updateOrderLevels(
-					feed.bids,
-					delta.bids,
-					SortDirection.ASC,
-					totalRows
-				),
-				asks: updateOrderLevels(
-					feed.asks,
-					delta.asks,
-					SortDirection.DESC,
-					totalRows
-				),
-			});
+			const bids = updateOrderLevels(feed.bids, delta.bids, SortDirection.ASC);
+			const asks = updateOrderLevels(feed.asks, delta.asks, SortDirection.DESC);
+
+			setFeed(createDepthLevels(bids, asks, totalRows));
 		}
 	}, [messageHistory.current.length, feed.bids, feed.asks, totalRows]);
 
@@ -104,6 +117,17 @@ export function Feed(props: FeedProps) {
 		<div className={styles.feed}>
 			<h1 className={styles.h1}>Order Book</h1>
 
+			{connectionState === ConnectionState.INACTIVE && (
+				<div className={styles.connectOverlay}>
+					<button
+						className={styles.buttonDefault}
+						onClick={() => setConnectionState(ConnectionState.ACTIVE)}
+					>
+						CONNECT
+					</button>
+				</div>
+			)}
+
 			<div className={styles.flex}>
 				<div className={styles.spreadSection}>
 					<Spread
@@ -111,20 +135,6 @@ export function Feed(props: FeedProps) {
 						bidPrice={feed.bids[0].price}
 						askPrice={feed.asks[0].price}
 					/>
-					<div style={{ position: "absolute", right: 0, top: 0 }}>
-						<div>
-							<button
-								onClick={() => setConnectionState(ConnectionState.ACTIVE)}
-							>
-								CONNECT
-							</button>
-							<button
-								onClick={() => setConnectionState(ConnectionState.INACTIVE)}
-							>
-								DISCONNECT
-							</button>
-						</div>
-					</div>
 				</div>
 				<table className={styles.tableBids}>
 					<thead>
@@ -176,7 +186,9 @@ export function Feed(props: FeedProps) {
 				</table>
 			</div>
 			<footer className={styles.footer}>
-				<button onClick={handleToggleFeed}>Toggle Feed</button>
+				<button className={styles.buttonDefault} onClick={handleToggleFeed}>
+					Toggle Feed
+				</button>
 			</footer>
 		</div>
 	);
@@ -185,8 +197,8 @@ export function Feed(props: FeedProps) {
 export function createOrderLevels(
 	priceLevels: [number, number][],
 	sortDirection: SortDirection
-): OrderLevel[] {
-	const orderLevels: OrderLevel[] = [];
+): OrderLevelSimple[] {
+	const orderLevels: OrderLevelSimple[] = [];
 
 	const sortedPriceLevels = priceLevels.sort((a, b) =>
 		sort(a[PriceLevel.PRICE], b[PriceLevel.PRICE], sortDirection)
@@ -202,8 +214,7 @@ export function createOrderLevels(
 					: array
 							.slice(0, index + 1)
 							.map((x) => x[PriceLevel.SIZE])
-							.reduce(reducer),
-			depth: 100,
+							.reduce(arrayReducer),
 		})
 	);
 	return orderLevels;
@@ -212,10 +223,9 @@ export function createOrderLevels(
 export function updateOrderLevels(
 	stateOrderLevels: OrderLevel[],
 	deltaPriceLevels: [number, number][],
-	sortDirection: SortDirection,
-	totalItems: number
-): OrderLevel[] {
-	const orderLevels: OrderLevel[] = [...stateOrderLevels];
+	sortDirection: SortDirection
+): OrderLevelSimple[] {
+	const orderLevels: OrderLevelSimple[] = [...stateOrderLevels];
 
 	deltaPriceLevels.forEach((delta) => {
 		const foundIndex = orderLevels.findIndex(
@@ -236,35 +246,46 @@ export function updateOrderLevels(
 					price: delta[PriceLevel.PRICE],
 					size: delta[PriceLevel.SIZE],
 					total: 0,
-					depth: 0,
 				});
 			}
 			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
+
+		orderLevels.forEach((level, index, array) => {
+			level.total =
+				index === 0
+					? level.size
+					: [...array]
+							.slice(0, index + 1)
+							.map((x) => x.size)
+							.reduce(arrayReducer);
+		});
 	});
-
-	let highestTotal = 0;
-	orderLevels.forEach((level, index, array) => {
-		level.total =
-			index === 0
-				? level.size
-				: [...array]
-						.slice(0, index + 1)
-						.map((x) => x.size)
-						.reduce(reducer);
-
-		if (index < totalItems) {
-			highestTotal = Math.max(highestTotal, level.total);
-		}
-	});
-
-	return orderLevels.map((x) => ({
-		...x,
-		depth: 100 - (x.total * 100) / highestTotal,
-	}));
+	return orderLevels;
 }
 
-function reducer(previousValue: number, currentValue: number): number {
+export function createDepthLevels(
+	bids: OrderLevelSimple[],
+	asks: OrderLevelSimple[],
+	totalItems: number
+): FeedData {
+	let highestTotal = 0;
+	bids.slice(0, totalItems).forEach((level) => {
+		highestTotal = Math.max(highestTotal, level.total);
+	});
+
+	const calculateDepth = (level: OrderLevelSimple, index: number) => ({
+		...level,
+		depth: index < totalItems ? 100 - (level.total * 100) / highestTotal : 0,
+	});
+
+	return {
+		bids: bids.map(calculateDepth),
+		asks: asks.map(calculateDepth),
+	};
+}
+
+function arrayReducer(previousValue: number, currentValue: number): number {
 	return previousValue + currentValue;
 }
 
