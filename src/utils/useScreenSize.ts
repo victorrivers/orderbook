@@ -42,12 +42,15 @@ export function useScreenSize() {
 }
 
 function calculateTotalRows(innerHeight: number) {
-	const rows = document.querySelector("table")?.querySelectorAll("tbody tr");
-	if (rows) {
-		return Math.max(
-			Math.floor((innerHeight * rows.length) / document.body.scrollHeight),
-			20
-		);
+	const tableHeader = document.querySelector("table thead tr") as HTMLElement;
+	const header = document.querySelector("h1") as HTMLElement;
+	const footer = document.querySelector("footer") as HTMLElement;
+	const tableRow = document.querySelector("table tbody tr") as HTMLElement;
+
+	if (tableHeader && tableRow && header && footer) {
+		const offset =
+			header.offsetHeight + tableHeader.offsetHeight + footer.offsetHeight;
+		return Math.ceil((innerHeight - offset) / tableRow.scrollHeight);
 	}
 	return 20;
 }

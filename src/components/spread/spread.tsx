@@ -11,7 +11,7 @@ export function Spread(props: SpreadProps): JSX.Element {
 	const { bidPrice, askPrice, className } = props;
 
 	const { formatNumber } = useFormatter();
-	const spread = askPrice - bidPrice;
+	const spread = Math.abs(askPrice - bidPrice);
 	const spreadPercentage = bidPrice === 0 ? 0 : (spread * 100) / bidPrice;
 
 	return (
