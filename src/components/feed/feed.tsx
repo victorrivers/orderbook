@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useFormatter } from "../../utils/locale";
-import { DataMessage, Product, useData } from "../../utils/use-data";
+import { Product, useData } from "../../utils/use-data";
+import { useFramesPerSecond } from "../../utils/use-fps";
 import { ConnectionState } from "../../utils/use-web-socket";
 import { Spread } from "../spread/spread";
 import styles from "./feed.module.scss";
@@ -36,14 +37,9 @@ interface FeedProps {
 
 export function Feed(props: FeedProps) {
 	const { totalRows } = props;
-
 	const { formatIntNumber, formatNumber } = useFormatter();
 
-	const [selectedProduct, setSelectedProduct] = useState<Product>(
-		Product.PI_XBTUSD
-	);
-
-	const [feed, setFeed] = useState<FeedData>({
+	const feedRef = useRef<FeedData>({
 		bids: [{ price: 0, size: 0, total: 0, depth: 0 }],
 		asks: [{ price: 0, size: 0, total: 0, depth: 0 }],
 	});
@@ -52,12 +48,25 @@ export function Feed(props: FeedProps) {
 		ConnectionState.INACTIVE
 	);
 
+	const [selectedProduct, setSelectedProduct] = useState<Product>(
+		Product.PI_XBTUSD
+	);
+
 	const { snapshotMessage, deltaMessage } = useData(
 		connectionState,
 		selectedProduct
 	);
 
-	const messageHistory = useRef<DataMessage[]>([]);
+	const [state, dispatch] = useReducer(reducer, feedRef.current);
+
+	const { elapsedTime } = useFramesPerSecond(
+		connectionState !== ConnectionState.ACTIVE,
+		1
+	);
+
+	useEffect(() => {
+		dispatch({ kaka: feedRef.current });
+	}, [elapsedTime]);
 
 	useEffect(() => {
 		setConnectionState(ConnectionState.ACTIVE);
@@ -86,24 +95,24 @@ export function Feed(props: FeedProps) {
 		const bids = createOrderLevels(snapshotMessage.bids, SortDirection.ASC);
 		const asks = createOrderLevels(snapshotMessage.asks, SortDirection.DESC);
 
-		setFeed(createDepthLevels(bids, asks, totalRows));
+		feedRef.current = createDepthLevels(bids, asks, totalRows);
 	}, [snapshotMessage, totalRows]);
 
 	useEffect(() => {
-		messageHistory.current.push(deltaMessage);
-	}, [deltaMessage]);
+		const feed = { ...feedRef.current };
+		const bids = updateOrderLevels(
+			feed.bids,
+			deltaMessage.bids,
+			SortDirection.ASC
+		);
+		const asks = updateOrderLevels(
+			feed.asks,
+			deltaMessage.asks,
+			SortDirection.DESC
+		);
 
-	useEffect(() => {
-		if (messageHistory.current.length > 0) {
-			const delta = messageHistory.current[messageHistory.current.length - 1];
-			messageHistory.current.splice(messageHistory.current.length - 1, 1);
-
-			const bids = updateOrderLevels(feed.bids, delta.bids, SortDirection.ASC);
-			const asks = updateOrderLevels(feed.asks, delta.asks, SortDirection.DESC);
-
-			setFeed(createDepthLevels(bids, asks, totalRows));
-		}
-	}, [messageHistory.current.length, feed.bids, feed.asks, totalRows]);
+		feedRef.current = createDepthLevels(bids, asks, totalRows);
+	}, [deltaMessage, totalRows]);
 
 	function handleToggleFeed() {
 		if (selectedProduct === Product.PI_XBTUSD) {
@@ -116,9 +125,12 @@ export function Feed(props: FeedProps) {
 	return (
 		<div className={styles.feed}>
 			<h1 className={styles.h1}>Order Book</h1>
-
 			{connectionState === ConnectionState.INACTIVE && (
-				<div className={styles.connectOverlay}>
+				<div className={styles.connectionWarning}>
+					<div>
+						<h3>Warning:</h3>
+						<div>Feed disconnected due to inactivity.</div>
+					</div>
 					<button
 						className={styles.buttonDefault}
 						onClick={() => setConnectionState(ConnectionState.ACTIVE)}
@@ -127,13 +139,12 @@ export function Feed(props: FeedProps) {
 					</button>
 				</div>
 			)}
-
 			<div className={styles.flex}>
 				<div className={styles.spreadSection}>
 					<Spread
 						className={styles.spread}
-						bidPrice={feed.bids[0].price}
-						askPrice={feed.asks[0].price}
+						bidPrice={state.bids.length ? state.bids[0].price : 0}
+						askPrice={state.asks.length ? state.asks[0].price : 0}
 					/>
 				</div>
 				<table className={styles.tableBids}>
@@ -145,7 +156,7 @@ export function Feed(props: FeedProps) {
 						</tr>
 					</thead>
 					<tbody>
-						{feed.bids.slice(0, totalRows).map((level, index) => (
+						{state.bids.slice(0, totalRows).map((level, index) => (
 							<tr key={`bid-level-${index}`} className={styles.tr}>
 								<td>{formatIntNumber(level.total)}</td>
 								<td>{formatIntNumber(level.size)}</td>
@@ -169,7 +180,7 @@ export function Feed(props: FeedProps) {
 						</tr>
 					</thead>
 					<tbody>
-						{feed.asks.slice(0, totalRows).map((level, index) => (
+						{state.asks.slice(0, totalRows).map((level, index) => (
 							<tr key={`ask-level-${index}`} className={styles.tr}>
 								<td className={styles.cellAskPrice}>
 									{formatNumber(level.price, 2)}
@@ -273,6 +284,9 @@ export function createDepthLevels(
 	bids.slice(0, totalItems).forEach((level) => {
 		highestTotal = Math.max(highestTotal, level.total);
 	});
+	asks.slice(0, totalItems).forEach((level) => {
+		highestTotal = Math.max(highestTotal, level.total);
+	});
 
 	const calculateDepth = (level: OrderLevelSimple, index: number) => ({
 		...level,
@@ -295,4 +309,8 @@ function sort(a: number, b: number, sortDirection: SortDirection) {
 	} else {
 		return b - a;
 	}
+}
+
+function reducer(_state: FeedData, action: { kaka: FeedData }) {
+	return action.kaka;
 }

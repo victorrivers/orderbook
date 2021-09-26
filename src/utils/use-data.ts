@@ -6,7 +6,7 @@ export enum Product {
 	PI_ETHUSD = "PI_ETHUSD",
 }
 
-export interface DataMessage {
+interface DataMessage {
 	bids: [number, number][];
 	asks: [number, number][];
 }
