@@ -3,6 +3,7 @@ import { useFormatter } from "../../utils/locale";
 import { Product, useData } from "../../utils/use-data";
 import { useFramesPerSecond } from "../../utils/use-fps";
 import { ConnectionState } from "../../utils/use-web-socket";
+import { useScreenSize } from "../../utils/useScreenSize";
 import { Spread } from "../spread/spread";
 import styles from "./feed.module.scss";
 
@@ -16,29 +17,22 @@ export type OrderLevel = OrderLevelSimple & {
 	depth: number;
 };
 
-export enum SortDirection {
-	ASC = 0,
-	DESC = 1,
-}
-
 export type FeedData = {
 	bids: OrderLevel[];
 	asks: OrderLevel[];
 };
+
+export enum SortDirection {
+	ASC = 0,
+	DESC = 1,
+}
 
 enum PriceLevel {
 	PRICE = 0,
 	SIZE = 1,
 }
 
-interface FeedProps {
-	totalRows: number;
-}
-
-export function Feed(props: FeedProps) {
-	const { totalRows } = props;
-	const { formatIntNumber, formatNumber } = useFormatter();
-
+export function Feed() {
 	const feedRef = useRef<FeedData>({
 		bids: [{ price: 0, size: 0, total: 0, depth: 0 }],
 		asks: [{ price: 0, size: 0, total: 0, depth: 0 }],
@@ -61,11 +55,13 @@ export function Feed(props: FeedProps) {
 
 	const { elapsedTime } = useFramesPerSecond(
 		connectionState !== ConnectionState.ACTIVE,
-		1
+		2
 	);
 
+	const { totalRows, isLayoutSmall } = useScreenSize();
+
 	useEffect(() => {
-		dispatch({ kaka: feedRef.current });
+		dispatch(feedRef.current);
 	}, [elapsedTime]);
 
 	useEffect(() => {
@@ -92,8 +88,8 @@ export function Feed(props: FeedProps) {
 	}, []);
 
 	useEffect(() => {
-		const bids = createOrderLevels(snapshotMessage.bids, SortDirection.ASC);
-		const asks = createOrderLevels(snapshotMessage.asks, SortDirection.DESC);
+		const bids = createOrderLevels(snapshotMessage.bids, SortDirection.DESC);
+		const asks = createOrderLevels(snapshotMessage.asks, SortDirection.ASC);
 
 		feedRef.current = createDepthLevels(bids, asks, totalRows);
 	}, [snapshotMessage, totalRows]);
@@ -103,12 +99,12 @@ export function Feed(props: FeedProps) {
 		const bids = updateOrderLevels(
 			feed.bids,
 			deltaMessage.bids,
-			SortDirection.ASC
+			SortDirection.DESC
 		);
 		const asks = updateOrderLevels(
 			feed.asks,
 			deltaMessage.asks,
-			SortDirection.DESC
+			SortDirection.ASC
 		);
 
 		feedRef.current = createDepthLevels(bids, asks, totalRows);
@@ -125,20 +121,6 @@ export function Feed(props: FeedProps) {
 	return (
 		<div className={styles.feed}>
 			<h1 className={styles.h1}>Order Book</h1>
-			{connectionState === ConnectionState.INACTIVE && (
-				<div className={styles.connectionWarning}>
-					<div>
-						<h3>Warning:</h3>
-						<div>Feed disconnected due to inactivity.</div>
-					</div>
-					<button
-						className={styles.buttonDefault}
-						onClick={() => setConnectionState(ConnectionState.ACTIVE)}
-					>
-						CONNECT
-					</button>
-				</div>
-			)}
 			<div className={styles.flex}>
 				<div className={styles.spreadSection}>
 					<Spread
@@ -147,61 +129,140 @@ export function Feed(props: FeedProps) {
 						askPrice={state.asks.length ? state.asks[0].price : 0}
 					/>
 				</div>
-				<table className={styles.tableBids}>
-					<thead>
-						<tr className={styles.headerRow}>
-							<th>TOTAL</th>
-							<th>SIZE</th>
-							<th>PRICE</th>
-						</tr>
-					</thead>
-					<tbody>
-						{state.bids.slice(0, totalRows).map((level, index) => (
-							<tr key={`bid-level-${index}`} className={styles.tr}>
-								<td>{formatIntNumber(level.total)}</td>
-								<td>{formatIntNumber(level.size)}</td>
-								<td className={styles.cellBidPrice}>
-									{formatNumber(level.price, 2)}
-								</td>
-								<td
-									className={styles.depthLevelBid}
-									style={{ left: `${level.depth}%` }}
-								/>
-							</tr>
-						))}
-					</tbody>
-				</table>
-				<table className={styles.tableAsks}>
-					<thead>
-						<tr className={styles.headerRow}>
-							<th>PRICE</th>
-							<th>SIZE</th>
-							<th>TOTAL</th>
-						</tr>
-					</thead>
-					<tbody>
-						{state.asks.slice(0, totalRows).map((level, index) => (
-							<tr key={`ask-level-${index}`} className={styles.tr}>
-								<td className={styles.cellAskPrice}>
-									{formatNumber(level.price, 2)}
-								</td>
-								<td>{formatIntNumber(level.size)}</td>
-								<td>{formatIntNumber(level.total)}</td>
-								<td
-									className={styles.depthLevelAsk}
-									style={{ right: `${level.depth}%` }}
-								/>
-							</tr>
-						))}
-					</tbody>
-				</table>
+				<Table
+					items={state.bids.slice(0, totalRows)}
+					type="BIDS"
+					isLayoutSmall={isLayoutSmall}
+				/>
+				<Table
+					items={state.asks.slice(0, totalRows)}
+					type="ASKS"
+					isLayoutSmall={isLayoutSmall}
+				/>
 			</div>
 			<footer className={styles.footer}>
 				<button className={styles.buttonDefault} onClick={handleToggleFeed}>
 					Toggle Feed
 				</button>
 			</footer>
+			{connectionState === ConnectionState.INACTIVE && (
+				<div className={styles.connectionWarningContainer}>
+					<div className={styles.connectionWarning}>
+						<div>
+							<h3>Warning:</h3>
+							<div>Feed disconnected due to inactivity.</div>
+						</div>
+						<button
+							className={styles.buttonDefault}
+							onClick={() => setConnectionState(ConnectionState.ACTIVE)}
+						>
+							RECONNECT
+						</button>
+					</div>
+				</div>
+			)}
 		</div>
+	);
+}
+
+interface TableProps {
+	items: OrderLevel[];
+	type: "BIDS" | "ASKS";
+	isLayoutSmall: boolean;
+}
+
+function Table(props: TableProps): JSX.Element {
+	const { type, isLayoutSmall } = props;
+
+	const { formatIntNumber, formatNumber } = useFormatter();
+
+	const [items, setItems] = useState(props.items);
+
+	const classNames =
+		type === "BIDS"
+			? {
+					table: styles.tableBids,
+					cellPrice: styles.cellBidPrice,
+					cellDepth: styles.depthLevelBid,
+			  }
+			: {
+					table: styles.tableAsks,
+					cellPrice: styles.cellAskPrice,
+					cellDepth: styles.depthLevelAsk,
+			  };
+
+	const columnsRef = useRef([
+		{
+			header: "PRICE",
+			cell: (level: OrderLevel) => (
+				<td key="price" className={classNames.cellPrice}>
+					{formatNumber(level.price, 2)}
+				</td>
+			),
+		},
+		{
+			header: "SIZE",
+			cell: (level: OrderLevel) => (
+				<td key="size">{formatIntNumber(level.size)}</td>
+			),
+		},
+		{
+			header: "TOTAL",
+			cell: (level: OrderLevel) => (
+				<td key="total">{formatIntNumber(level.total)}</td>
+			),
+		},
+	]);
+
+	const [columns, setColumns] = useState(columnsRef.current);
+
+	useEffect(() => {
+		const invertColumns = type === "BIDS" && !isLayoutSmall;
+
+		if (invertColumns) {
+			setColumns([...columnsRef.current].reverse());
+		} else {
+			setColumns(columnsRef.current);
+		}
+	}, [type, isLayoutSmall]);
+
+	useEffect(() => {
+		const invertRows = type === "ASKS" && isLayoutSmall;
+
+		if (invertRows) {
+			setItems([...props.items].reverse());
+		} else {
+			setItems(props.items);
+		}
+	}, [type, isLayoutSmall, props.items]);
+
+	return (
+		<table className={classNames.table}>
+			<thead>
+				<tr className={styles.headerRow}>
+					{columns.map((col, index) => (
+						<th key={`col-${index}`}>{col.header}</th>
+					))}
+				</tr>
+			</thead>
+			<tbody>
+				{items.map((level, index) => (
+					<tr key={`order-level-${index}`} className={styles.tr}>
+						{columns.map((col) => col.cell(level))}
+						<td
+							className={classNames.cellDepth}
+							style={
+								isLayoutSmall
+									? { left: 0, right: `${level.depth}%` }
+									: type === "BIDS"
+									? { left: `${level.depth}%` }
+									: { right: `${level.depth}%` }
+							}
+						/>
+					</tr>
+				))}
+			</tbody>
+		</table>
 	);
 }
 
@@ -311,6 +372,6 @@ function sort(a: number, b: number, sortDirection: SortDirection) {
 	}
 }
 
-function reducer(_state: FeedData, action: { kaka: FeedData }) {
-	return action.kaka;
+function reducer(_state: FeedData, state: FeedData) {
+	return state;
 }

@@ -54,3 +54,37 @@ export function useFramesPerSecond(
 
 	return result;
 }
+
+export function useSupportedFps() {
+	const [result, setResult] = useState("");
+
+	useEffect(() => {
+		var t, previousTime: number;
+		var drawLoad = 1;
+		var slowCount = 0;
+		var maxSlow = 10;
+		// Note, you might need to polyfill performance.now and requestAnimationFrame
+		t = previousTime = performance.now();
+		var tick = function () {
+			var maximumFrameTime = 1000 / 60; // 300 FPS
+			t = performance.now();
+			var elapsed = t - previousTime;
+			previousTime = t;
+			if (elapsed < maximumFrameTime || slowCount < maxSlow) {
+				if (elapsed < maximumFrameTime) {
+					drawLoad += 10;
+				} else {
+					slowCount++;
+				}
+				setResult("drawLoad:" + drawLoad);
+				requestAnimationFrame(tick);
+			} else {
+				// found maximum sustainable load at 300 FPS
+				setResult("could draw " + drawLoad + " in " + maximumFrameTime + " ms");
+			}
+		};
+		requestAnimationFrame(tick);
+	}, []);
+
+	return result;
+}

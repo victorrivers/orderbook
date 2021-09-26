@@ -2,7 +2,7 @@ $space-large: 16px;
 $space-medium: 8px;
 $space-small: 4px;
 $layout-medium: 768px;
-$color-text-toned-down: #6b707b;
+$color-text-toned-down: #9598a0;
 
 .h1 {
 	margin: 0;
@@ -19,6 +19,7 @@ $color-text-toned-down: #6b707b;
 .flex {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: flex-start;
 }
 
 .spreadSection {
@@ -36,14 +37,9 @@ $color-text-toned-down: #6b707b;
 
 .tableBids {
 	order: 3;
-	direction: rtl;
 
 	thead {
 		display: none;
-	}
-
-	tbody {
-		direction: ltr;
 	}
 }
 
@@ -134,15 +130,23 @@ $color-text-toned-down: #6b707b;
 	cursor: pointer;
 }
 
+.connectionWarningContainer {
+	position: fixed;
+	top: 0;
+	left: 0;
+	border: 0;
+	right: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	height: 100%;
+}
+
 .connectionWarning {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin: 80px 32px 0;
+	margin: 52px 0 0;
 	padding: $space-large;
-	border: 1px solid #ff7575;
-	border-radius: 3px;
-	background-color: #d47878;
+	background-color: #d84b4b;
 
 	h3 {
 		margin: 0 0 $space-medium 0;
@@ -163,7 +167,6 @@ $color-text-toned-down: #6b707b;
 
 	.tableBids {
 		order: 2;
-		direction: ltr;
 
 		thead {
 			display: table-header-group;
