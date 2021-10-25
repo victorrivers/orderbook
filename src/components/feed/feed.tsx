@@ -10,10 +10,10 @@ import styles from "./feed.module.scss";
 export type OrderLevelSimple = {
 	price: number;
 	size: number;
-	total: number;
 };
 
 export type OrderLevel = OrderLevelSimple & {
+	total: number;
 	depth: number;
 };
 
@@ -27,15 +27,20 @@ export enum SortDirection {
 	DESC = 1,
 }
 
+type FeedDataSimple = {
+	bids: OrderLevelSimple[];
+	asks: OrderLevelSimple[];
+};
+
 enum PriceLevel {
 	PRICE = 0,
 	SIZE = 1,
 }
 
 export function Feed() {
-	const feedRef = useRef<FeedData>({
-		bids: [{ price: 0, size: 0, total: 0, depth: 0 }],
-		asks: [{ price: 0, size: 0, total: 0, depth: 0 }],
+	const feedRef = useRef<FeedDataSimple>({
+		bids: [{ price: 0, size: 0 }],
+		asks: [{ price: 0, size: 0 }],
 	});
 
 	const [connectionState, setConnectionState] = useState(
@@ -51,18 +56,19 @@ export function Feed() {
 		selectedProduct
 	);
 
-	const [state, dispatch] = useReducer(reducer, feedRef.current);
+	const [state, dispatch] = useReducer(reducer, createDepthLevels(feedRef.current.bids, feedRef.current.asks, 1));
 
+	const framesPerSecond = 2;
 	const { elapsedTime } = useFramesPerSecond(
 		connectionState !== ConnectionState.ACTIVE,
-		2
+		framesPerSecond
 	);
 
 	const { totalRows, isLayoutSmall } = useScreenSize();
 
 	useEffect(() => {
-		dispatch(feedRef.current);
-	}, [elapsedTime]);
+		dispatch(createDepthLevels(feedRef.current.bids, feedRef.current.asks, totalRows));
+	}, [elapsedTime, totalRows]);
 
 	useEffect(() => {
 		setConnectionState(ConnectionState.ACTIVE);
@@ -91,23 +97,23 @@ export function Feed() {
 		const bids = createOrderLevels(snapshotMessage.bids, SortDirection.DESC);
 		const asks = createOrderLevels(snapshotMessage.asks, SortDirection.ASC);
 
-		feedRef.current = createDepthLevels(bids, asks, totalRows);
+		feedRef.current = {bids, asks};
+		dispatch(createDepthLevels(bids, asks, totalRows));
 	}, [snapshotMessage, totalRows]);
 
 	useEffect(() => {
-		const feed = { ...feedRef.current };
 		const bids = updateOrderLevels(
-			feed.bids,
+			feedRef.current.bids,
 			deltaMessage.bids,
 			SortDirection.DESC
 		);
 		const asks = updateOrderLevels(
-			feed.asks,
+			feedRef.current.asks,
 			deltaMessage.asks,
 			SortDirection.ASC
 		);
 
-		feedRef.current = createDepthLevels(bids, asks, totalRows);
+		feedRef.current = {bids, asks};
 	}, [deltaMessage, totalRows]);
 
 	function handleToggleFeed() {
@@ -276,24 +282,17 @@ export function createOrderLevels(
 		sort(a[PriceLevel.PRICE], b[PriceLevel.PRICE], sortDirection)
 	);
 
-	sortedPriceLevels.forEach((level, index, array) =>
+	sortedPriceLevels.forEach((level) =>
 		orderLevels.push({
 			price: level[PriceLevel.PRICE],
 			size: level[PriceLevel.SIZE],
-			total:
-				index === 0
-					? level[PriceLevel.SIZE]
-					: array
-							.slice(0, index + 1)
-							.map((x) => x[PriceLevel.SIZE])
-							.reduce(arrayReducer),
 		})
 	);
 	return orderLevels;
 }
 
 export function updateOrderLevels(
-	stateOrderLevels: OrderLevel[],
+	stateOrderLevels: OrderLevelSimple[],
 	deltaPriceLevels: [number, number][],
 	sortDirection: SortDirection
 ): OrderLevelSimple[] {
@@ -317,21 +316,10 @@ export function updateOrderLevels(
 				orderLevels.push({
 					price: delta[PriceLevel.PRICE],
 					size: delta[PriceLevel.SIZE],
-					total: 0,
 				});
 			}
 			orderLevels.sort((a, b) => sort(a.price, b.price, sortDirection));
 		}
-
-		orderLevels.forEach((level, index, array) => {
-			level.total =
-				index === 0
-					? level.size
-					: [...array]
-							.slice(0, index + 1)
-							.map((x) => x.size)
-							.reduce(arrayReducer);
-		});
 	});
 	return orderLevels;
 }
@@ -341,22 +329,46 @@ export function createDepthLevels(
 	asks: OrderLevelSimple[],
 	totalItems: number
 ): FeedData {
+	const _bids = bids.slice(0, totalItems).map((level, index, array) => (
+		{...level,
+			depth:0,
+			total:
+				index === 0
+					? level.size
+					: [...array]
+							.slice(0, index + 1)
+							.map((x) => x.size)
+							.reduce(arrayReducer),
+		}));
+
+	const _asks = asks.slice(0, totalItems).map((level, index, array) => (
+		{...level,
+			depth:0,
+			total:
+				index === 0
+					? level.size
+					: [...array]
+							.slice(0, index + 1)
+							.map((x) => x.size)
+							.reduce(arrayReducer),
+		}));
+
 	let highestTotal = 0;
-	bids.slice(0, totalItems).forEach((level) => {
+	_bids.slice(0, totalItems).forEach((level) => {
 		highestTotal = Math.max(highestTotal, level.total);
 	});
-	asks.slice(0, totalItems).forEach((level) => {
+	_asks.slice(0, totalItems).forEach((level) => {
 		highestTotal = Math.max(highestTotal, level.total);
 	});
 
-	const calculateDepth = (level: OrderLevelSimple, index: number) => ({
+	const calculateDepth = (level: OrderLevel, index: number) => ({
 		...level,
 		depth: index < totalItems ? 100 - (level.total * 100) / highestTotal : 0,
 	});
 
 	return {
-		bids: bids.map(calculateDepth),
-		asks: asks.map(calculateDepth),
+		bids: _bids.map(calculateDepth),
+		asks: _asks.map(calculateDepth),
 	};
 }
 

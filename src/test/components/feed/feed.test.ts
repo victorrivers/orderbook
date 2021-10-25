@@ -11,16 +11,16 @@ import {
 describe("create order levels", () => {
 	test("create order levels - sort ascending", () => {
 		const priceLevels: [number, number][] = [
-			[1, 1],
-			[2, 2],
-			[3, 3],
-			[4, 4],
+			[4500, 1],
+			[2500, 2],
+			[1000, 3],
+			[3800, 4],
 		];
 		const expected: OrderLevelSimple[] = [
-			{ price: 1, size: 1, total: 1 },
-			{ price: 2, size: 2, total: 3 },
-			{ price: 3, size: 3, total: 6 },
-			{ price: 4, size: 4, total: 10 },
+			{ price: 1000, size: 3 },
+			{ price: 2500, size: 2 },
+			{ price: 3800, size: 4 },
+			{ price: 4500, size: 1 },
 		];
 		const actual = createOrderLevels(priceLevels, SortDirection.ASC);
 		expect(actual).toEqual(expected);
@@ -28,16 +28,18 @@ describe("create order levels", () => {
 
 	test("create order levels - sort descending", () => {
 		const priceLevels: [number, number][] = [
-			[1, 1],
-			[2, 2],
-			[3, 3],
-			[4, 4],
+			[150, 1],
+			[40, 4],
+			[280, 2],
+			[300, 3],
+			[2500, 8],
 		];
 		const expected: OrderLevelSimple[] = [
-			{ price: 4, size: 4, total: 4 },
-			{ price: 3, size: 3, total: 7 },
-			{ price: 2, size: 2, total: 9 },
-			{ price: 1, size: 1, total: 10 },
+			{ price: 2500, size: 8 },
+			{ price: 300, size: 3 },
+			{ price: 280, size: 2 },
+			{ price: 150, size: 1 },
+			{ price: 40, size: 4 } 
 		];
 		const actual = createOrderLevels(priceLevels, SortDirection.DESC);
 		expect(actual).toEqual(expected);
@@ -59,9 +61,9 @@ describe("update order levels", () => {
 			[4, 11],
 		];
 		const expected: OrderLevelSimple[] = [
-			{ price: 1, size: 1, total: 1 },
-			{ price: 3, size: 3, total: 4 },
-			{ price: 4, size: 11, total: 15 },
+			{ price: 1, size: 1 },
+			{ price: 3, size: 3 },
+			{ price: 4, size: 11 },
 		];
 		const actual = updateOrderLevels(
 			stateOrderLevels,
@@ -86,11 +88,11 @@ describe("update order levels", () => {
 			[1320, 1652],
 		];
 		const expected: OrderLevelSimple[] = [
-			{ price: 1576, size: 3750, total: 3750 },
-			{ price: 1405.5, size: 1833, total: 5583 },
-			{ price: 1320, size: 1652, total: 7235 },
-			{ price: 1205.5, size: 451, total: 7686 },
-			{ price: 1200, size: 1000, total: 8686 },
+			{ price: 1576, size: 3750 },
+			{ price: 1405.5, size: 1833 },
+			{ price: 1320, size: 1652 },
+			{ price: 1205.5, size: 451 },
+			{ price: 1200, size: 1000 },
 		];
 		const actual = updateOrderLevels(
 			stateOrderLevels,
@@ -104,25 +106,25 @@ describe("update order levels", () => {
 describe("create depth levels", () => {
 	test("create depth levels - total items is 20", () => {
 		const bids: OrderLevelSimple[] = [
-			{ price: 42259.0, size: 470649, total: 470649 },
-			{ price: 42400.0, size: 475589, total: 946238 },
-			{ price: 42421.0, size: 26730, total: 972968 },
-			{ price: 42573.0, size: 182604, total: 1155572 },
-			{ price: 42620.5, size: 26730, total: 1182302 },
-			{ price: 42687.0, size: 2029, total: 1184331 },
-			{ price: 42709.5, size: 7053, total: 1191384 },
-			{ price: 42722.0, size: 17488, total: 1208872 },
+			{ price: 42259.0, size: 470649 },
+			{ price: 42400.0, size: 475589 },
+			{ price: 42421.0, size: 26730 },
+			{ price: 42573.0, size: 182604 },
+			{ price: 42620.5, size: 26730 },
+			{ price: 42687.0, size: 2029 },
+			{ price: 42709.5, size: 7053 },
+			{ price: 42722.0, size: 17488 },
 		];
 
 		const asks: OrderLevelSimple[] = [
-			{ price: 43474.5, size: 26730, total: 26730 },
-			{ price: 43438.5, size: 16428, total: 43158 },
-			{ price: 43433.5, size: 11562, total: 54720 },
-			{ price: 43387.5, size: 480314, total: 535034 },
-			{ price: 43281.5, size: 26730, total: 561764 },
-			{ price: 43203.0, size: 2086, total: 563850 },
-			{ price: 43162.5, size: 17669, total: 581519 },
-			{ price: 43152.5, size: 26730, total: 608249 },
+			{ price: 43474.5, size: 26730 },
+			{ price: 43438.5, size: 16428 },
+			{ price: 43433.5, size: 11562 },
+			{ price: 43387.5, size: 480314 },
+			{ price: 43281.5, size: 26730 },
+			{ price: 43203.0, size: 2086 },
+			{ price: 43162.5, size: 17669 },
+			{ price: 43152.5, size: 26730 },
 		];
 
 		const expected: FeedData = {
@@ -228,25 +230,25 @@ describe("create depth levels", () => {
 
 	test("create depth levels - total items is 6", () => {
 		const bids: OrderLevelSimple[] = [
-			{ price: 2933.45, size: 45304, total: 45304 },
-			{ price: 2939.55, size: 40288, total: 85592 },
-			{ price: 2940.5, size: 133637, total: 219229 },
-			{ price: 2940.7, size: 15891, total: 235120 },
-			{ price: 2940.75, size: 151463, total: 386583 },
-			{ price: 2940.9, size: 3275, total: 389858 },
-			{ price: 2941.0, size: 5008, total: 394866 },
-			{ price: 2941.1, size: 3932, total: 398798 },
+			{ price: 2933.45, size: 45304 },
+			{ price: 2939.55, size: 40288 },
+			{ price: 2940.5, size: 133637 },
+			{ price: 2940.7, size: 15891 },
+			{ price: 2940.75, size: 151463 },
+			{ price: 2940.9, size: 3275 },
+			{ price: 2941.0, size: 5008 },
+			{ price: 2941.1, size: 3932 },
 		];
 
 		const asks: OrderLevelSimple[] = [
-			{ price: 2981.95, size: 36514, total: 36514 },
-			{ price: 2955.95, size: 48610, total: 85124 },
-			{ price: 2949.2, size: 5000, total: 90124 },
-			{ price: 2948.9, size: 31773, total: 121897 },
-			{ price: 2948.85, size: 4141, total: 126038 },
-			{ price: 2948.6, size: 1824, total: 127862 },
-			{ price: 2948.5, size: 5862, total: 133724 },
-			{ price: 2948.45, size: 3003, total: 136727 },
+			{ price: 2981.95, size: 36514 },
+			{ price: 2955.95, size: 48610 },
+			{ price: 2949.2, size: 5000 },
+			{ price: 2948.9, size: 31773 },
+			{ price: 2948.85, size: 4141 },
+			{ price: 2948.6, size: 1824 },
+			{ price: 2948.5, size: 5862 },
+			{ price: 2948.45, size: 3003 },
 		];
 
 		const expected: FeedData = {
@@ -254,56 +256,48 @@ describe("create depth levels", () => {
 				{
 					price: 2933.45,
 					size: 45304,
-					total: 45304,
 					depth: 80.73154134059203,
+					total: 45304
 				},
 				{
 					price: 2939.55,
 					size: 40288,
-					total: 85592,
 					depth: 63.59646138142225,
+					total: 85592
 				},
 				{
 					price: 2940.5,
 					size: 133637,
-					total: 219229,
 					depth: 6.758676420551211,
+					total: 219229
 				},
-				{ price: 2940.7, size: 15891, total: 235120, depth: 0 },
-				{ price: 2940.75, size: 151463, total: 386583, depth: 0 },
-				{ price: 2940.9, size: 3275, total: 389858, depth: 0 },
-				{ price: 2941, size: 5008, total: 394866, depth: 0 },
-				{ price: 2941.1, size: 3932, total: 398798, depth: 0 },
+				{ price: 2940.7, size: 15891, depth: 0, total: 235120 }
 			],
 			asks: [
 				{
 					price: 2981.95,
 					size: 36514,
-					total: 36514,
 					depth: 84.47005784280367,
+					total: 36514
 				},
 				{
 					price: 2955.95,
 					size: 48610,
-					total: 85124,
 					depth: 63.79550867642055,
+					total: 85124
 				},
 				{
 					price: 2949.2,
 					size: 5000,
-					total: 90124,
 					depth: 61.668935011908815,
+					total: 90124
 				},
 				{
 					price: 2948.9,
 					size: 31773,
-					total: 121897,
 					depth: 48.155410003402515,
-				},
-				{ price: 2948.85, size: 4141, total: 126038, depth: 0 },
-				{ price: 2948.6, size: 1824, total: 127862, depth: 0 },
-				{ price: 2948.5, size: 5862, total: 133724, depth: 0 },
-				{ price: 2948.45, size: 3003, total: 136727, depth: 0 },
+					total: 121897
+				}
 			],
 		};
 		const actual = createDepthLevels(bids, asks, 4);
